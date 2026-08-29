@@ -22,24 +22,23 @@ jobs:
       run: |
         git clone https://github.com/novnc/noVNC.git novnc-client
 
-    - name: Download Tunneling Agent
+    - name: Download Tunneling Agent via Chocolatey
       run: |
-        Invoke-WebRequest https://equinox.io -OutFile ngrok.zip
-        Expand-Archive ngrok.zip
+        choco install ngrok -y
 
     - name: Authenticate Tunnel
       run: |
-        .\ngrok\ngrok.exe config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+        ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
 
     - name: Launch noVNC Server and Tunnel
       run: |
-        # Launch websockify to convert RDP/VNC traffic on port 6080
-        Start-Process cmd -ArgumentList "/c websockify.cmd 6080 localhost:3389"
+        # Launch websockify to convert RDP traffic on port 6080
+        Start-Process cmd -ArgumentList "/c websockify 6080 localhost:3389"
         
         # Expose the noVNC port to the web
-        Start-Process cmd -ArgumentList "/c .\ngrok\ngrok.exe http 6080"
+        Start-Process cmd -ArgumentList "/c ngrok http 6080"
         
         # Keep runner alive for up to 6 hours
-        Write-Host "Windows noVNC Server is running..."
+        Write-Host "Windows noVNC Server is running successfully..."
         Start-Sleep -Seconds 21600
         
