@@ -1,0 +1,45 @@
+name: Windows Premade noVNC RDP
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+    - name: Install Node.js & Websockify/noVNC Bridge
+      run: |
+        choco install nodejs -y
+        npm install -g websockify
+
+    - name: Download Premade noVNC Client
+      shell: bash
+      run: |
+        git clone https://github.com novnc-client
+
+    - name: Download Tunneling Agent
+      run: |
+        Invoke-WebRequest https://equinox.io -OutFile ngrok.zip
+        Expand-Archive ngrok.zip
+
+    - name: Authenticate Tunnel
+      run: |
+        .\ngrok\ngrok.exe config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Launch noVNC Server and Tunnel
+      run: |
+        # Launch websockify to convert RDP/VNC traffic on port 6080
+        Start-Process cmd -ArgumentList "/c websockify.cmd 6080 localhost:3389"
+        
+        # Expose the noVNC port to the web
+        Start-Process cmd -ArgumentList "/c .\ngrok\ngrok.exe http 6080"
+        
+        # Keep runner alive for up to 6 hours
+        Write-Host "Windows noVNC Server is running..."
+        Start-Sleep -Seconds 21600
+        
